@@ -1,1 +1,1 @@
-# project1
+# ECS 150 Project 1

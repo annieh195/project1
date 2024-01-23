@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 #define CMDLINE_MAX 512
 #define ARG_MAX 16
@@ -15,13 +16,18 @@ struct command
         char *args[ARG_MAX];
         int count;
         char *full_command;
+        char *output_file;
 };
 
 void parse(struct command *commands, char *cmd_in)
 {
         commands->full_command = strdup(cmd_in);
         commands->count = 0;
-        char *token = strtok(cmd_in, " ");
+        commands->output_file = NULL;
+
+        char *token_before_symbol = strtok(cmd_in, ">");
+        char *token_after_symbol = strtok(NULL, "");
+        char *token = strtok(token_before_symbol, " ");
         while (token != NULL && commands->count < ARG_MAX)
         {
                 if (commands->count == 0)
@@ -32,6 +38,20 @@ void parse(struct command *commands, char *cmd_in)
                 token = strtok(NULL, " ");
         }
         commands->args[commands->count] = NULL;
+
+        // check if after symbol > have white spaces around
+        if (token_after_symbol != NULL)
+        {
+                // check pointer point to space
+                while (*token_after_symbol == ' ')
+                {
+                        token_after_symbol++;
+                }
+                if (*token_after_symbol != '\0') // check not point to null char
+                {
+                        commands->output_file = token_after_symbol;
+                }
+        }
 }
 
 int main(void)
@@ -107,6 +127,17 @@ int main(void)
                         if (pid == 0)
                         {
                                 /* Child */
+
+                                // redirect if output file is specified
+                                if (commands.output_file != NULL)
+                                {
+                                        int fd;
+                                        // fd = open(commands.output_file, O_WRONLY | O_CREAT | O_APPEND, 0644);
+                                        fd = open(commands.output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                                        dup2(fd, STDOUT_FILENO);
+                                        close(fd);
+                                }
+
                                 execvp(cmd, commands.args);
                                 perror("execvp");
                                 exit(EXIT_FAILURE);
@@ -115,6 +146,7 @@ int main(void)
                         {
                                 /* Parent */
                                 wait(&status);
+                                // dup2(test, STDOUT_FILENO);
                         }
                         else
                         {
