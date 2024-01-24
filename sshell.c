@@ -17,6 +17,7 @@ struct command
         int count;
         char *full_command;
         char *output_file;
+        int append;
 };
 
 void parse(struct command *commands, char *cmd_in)
@@ -24,10 +25,35 @@ void parse(struct command *commands, char *cmd_in)
         commands->full_command = strdup(cmd_in);
         commands->count = 0;
         commands->output_file = NULL;
+        commands->append = 0;
 
-        char *token_before_symbol = strtok(cmd_in, ">");
-        char *token_after_symbol = strtok(NULL, "");
-        char *token = strtok(token_before_symbol, " ");
+        char *output_redirection = strstr(cmd_in, ">>");
+        if (output_redirection != NULL)
+        {
+                *output_redirection = '\0';
+                commands->output_file = output_redirection + 2;
+                commands->append = 1;
+        }
+        else
+        {
+                output_redirection = strchr(cmd_in, '>');
+                if (output_redirection != NULL)
+                {
+                        *output_redirection = '\0';
+                        commands->output_file = output_redirection + 1;
+                }
+        }
+
+        // check white spaces, increase pointer to first char of next token
+        if (commands->output_file != NULL)
+        {
+                while (*commands->output_file == ' ')
+                {
+                        commands->output_file++;
+                }
+        }
+
+        char *token = strtok(cmd_in, " ");
         while (token != NULL && commands->count < ARG_MAX)
         {
                 if (commands->count == 0)
@@ -38,20 +64,6 @@ void parse(struct command *commands, char *cmd_in)
                 token = strtok(NULL, " ");
         }
         commands->args[commands->count] = NULL;
-
-        // check if after symbol > have white spaces around
-        if (token_after_symbol != NULL)
-        {
-                // check pointer point to space
-                while (*token_after_symbol == ' ')
-                {
-                        token_after_symbol++;
-                }
-                if (*token_after_symbol != '\0') // check not point to null char
-                {
-                        commands->output_file = token_after_symbol;
-                }
-        }
 }
 
 int main(void)
@@ -92,6 +104,7 @@ int main(void)
                 if (!strcmp(cmd, "exit"))
                 {
                         fprintf(stderr, "Bye...\n");
+                        status = 0;
                         exit_status = 1;
                 }
 
@@ -132,8 +145,14 @@ int main(void)
                                 if (commands.output_file != NULL)
                                 {
                                         int fd;
-                                        // fd = open(commands.output_file, O_WRONLY | O_CREAT | O_APPEND, 0644);
-                                        fd = open(commands.output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                                        if (commands.append)
+                                        {
+                                                fd = open(commands.output_file, O_WRONLY | O_CREAT | O_APPEND, 0644);
+                                        }
+                                        else
+                                        {
+                                                fd = open(commands.output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                                        }
                                         dup2(fd, STDOUT_FILENO);
                                         close(fd);
                                 }
