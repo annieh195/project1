@@ -4,11 +4,12 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
 #define CMDLINE_MAX 512
 #define ARG_MAX 16
 // #define TOKEN_MAX 32
-#define PATH_MAX 1024
 
 struct command
 {
@@ -27,6 +28,7 @@ void parse(struct command *commands, char *cmd_in)
         commands->output_file = NULL;
         commands->append = 0;
 
+        // append
         char *output_redirection = strstr(cmd_in, ">>");
         if (output_redirection != NULL)
         {
@@ -36,6 +38,7 @@ void parse(struct command *commands, char *cmd_in)
         }
         else
         {
+                // truncate
                 output_redirection = strchr(cmd_in, '>');
                 if (output_redirection != NULL)
                 {
@@ -133,6 +136,28 @@ int main(void)
                                 }
                         }
                 }
+
+                // sls command
+                // Cite: Lecture 03.syscalls.pdf page 32-33
+                else if (!strcmp(cmd, "sls"))
+                {
+                        struct stat sb;
+                        DIR *dirp;
+                        struct dirent *dp;
+
+                        dirp = opendir(".");
+                        while ((dp = readdir(dirp)) != NULL)
+                        {       
+                                // check and only print if it is directory using stat macro
+                                if (stat(dp->d_name, &sb) == 0 && S_ISREG(sb.st_mode))
+                                {
+                                        printf("%s (%ld bytes)\n", dp->d_name, sb.st_size);
+                                }
+                        }
+                        closedir(dirp);
+                        status = 0;
+                }
+
                 else
                 {
                         pid_t pid;
