@@ -21,7 +21,7 @@ struct command
         int append;
 };
 
-void parse(struct command *commands, char *cmd_in)
+int parse(struct command *commands, char *cmd_in)
 {
         commands->full_command = strdup(cmd_in);
         commands->count = 0;
@@ -57,8 +57,13 @@ void parse(struct command *commands, char *cmd_in)
         }
 
         char *token = strtok(cmd_in, " ");
-        while (token != NULL && commands->count < ARG_MAX)
+        while (token != NULL)
         {
+                if (commands->count >= ARG_MAX)
+                {
+                        fprintf(stderr, "Error: too many process arguments\n");
+                        return -1;
+                }
                 if (commands->count == 0)
                 {
                         commands->program = token;
@@ -67,6 +72,7 @@ void parse(struct command *commands, char *cmd_in)
                 token = strtok(NULL, " ");
         }
         commands->args[commands->count] = NULL;
+        return 0;
 }
 
 int main(void)
@@ -98,7 +104,10 @@ int main(void)
                         *nl = '\0';
 
                 struct command commands;
-                parse(&commands, cmd);
+                if (parse(&commands, cmd) < 0)
+                {
+                        continue; // outloop if error
+                }
                 int status = 0;
                 int exit_status = 0;
 
@@ -158,6 +167,11 @@ int main(void)
                                 {
                                         printf("%s (%ld bytes)\n", dp->d_name, sb.st_size);
                                 }
+                                else
+                                {
+                                        fprintf(stderr, "Error: cannot open directory\n");
+                                        status = 1;
+                                }
                         }
                         closedir(dirp);
                         status = 0;
@@ -183,12 +197,16 @@ int main(void)
                                         {
                                                 fd = open(commands.output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
                                         }
+                                        if (fd < 0)
+                                        {
+                                                fprintf(stderr, "Error: cannot open output file\n");
+                                                continue;
+                                        }
                                         dup2(fd, STDOUT_FILENO);
                                         close(fd);
                                 }
 
                                 execvp(commands.program, commands.args);
-                                perror("execvp");
                                 fprintf(stderr, "Error: command not found\n");
                                 exit(EXIT_FAILURE);
                         }

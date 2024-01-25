@@ -12,7 +12,7 @@ The implementation of this program follows six consecutive phases:
     2. Manipulating the stdout file descriptor prior to running the specified
     program.
 5. Implementing pipeline commands
-6.
+6. Extra features (append and sls)
 ### Running simple commands
 
 ### Handling command lines
