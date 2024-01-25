@@ -99,12 +99,12 @@ int main(void)
 
                 struct command commands;
                 parse(&commands, cmd);
-                int status;
-                int exit_status;
+                int status = 0;
+                int exit_status = 0;
 
                 /* Builtin command */
                 // exit command
-                if (!strcmp(cmd, "exit"))
+                if (!strcmp(commands.program, "exit"))
                 {
                         fprintf(stderr, "Bye...\n");
                         status = 0;
@@ -112,7 +112,7 @@ int main(void)
                 }
 
                 // pwd command
-                else if (!strcmp(cmd, "pwd"))
+                else if (!strcmp(commands.program, "pwd"))
                 {
                         char cwd[PATH_MAX];
                         if (getcwd(cwd, sizeof(cwd)) != NULL)
@@ -126,20 +126,25 @@ int main(void)
                 }
 
                 // cd command
-                else if (!strcmp(cmd, "cd"))
+                else if (!strcmp(commands.program, "cd"))
                 {
                         if (commands.count > 1)
                         {
                                 if (chdir(commands.args[1]) != 0)
                                 {
+                                        fprintf(stderr, "Error: cannot cd into directory\n");
                                         status = 1;
+                                }
+                                else
+                                {
+                                        status = 0;
                                 }
                         }
                 }
 
                 // sls command
                 // Cite: Lecture 03.syscalls.pdf page 32-33
-                else if (!strcmp(cmd, "sls"))
+                else if (!strcmp(commands.program, "sls"))
                 {
                         struct stat sb;
                         DIR *dirp;
@@ -147,7 +152,7 @@ int main(void)
 
                         dirp = opendir(".");
                         while ((dp = readdir(dirp)) != NULL)
-                        {       
+                        {
                                 // check and only print if it is directory using stat macro
                                 if (stat(dp->d_name, &sb) == 0 && S_ISREG(sb.st_mode))
                                 {
@@ -182,14 +187,20 @@ int main(void)
                                         close(fd);
                                 }
 
-                                execvp(cmd, commands.args);
+                                execvp(commands.program, commands.args);
                                 perror("execvp");
+                                fprintf(stderr, "Error: command not found\n");
                                 exit(EXIT_FAILURE);
                         }
                         else if (pid > 0)
                         {
                                 /* Parent */
-                                wait(&status);
+                                int child_status;
+                                wait(&child_status);
+                                if (WIFEXITED(child_status))
+                                {
+                                        status = WEXITSTATUS(child_status);
+                                }
                                 // dup2(test, STDOUT_FILENO);
                         }
                         else
@@ -200,7 +211,7 @@ int main(void)
                 }
 
                 // print + completed 'command' [status]
-                fprintf(stderr, "+ completed '%s' [%d]\n", commands.full_command, WEXITSTATUS(status));
+                fprintf(stderr, "+ completed '%s' [%d]\n", commands.full_command, status);
 
                 if (exit_status == 1)
                 {
