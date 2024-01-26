@@ -228,64 +228,91 @@ int main(void)
 
                 else
                 {
-                        pid_t pid;
-                        pid = fork();
-                        if (pid == 0)
+                        // check for pipe
+                        // Cite: www.cs.loyola.edu/~jglenn/702/S2005/Examples/dup2.html
+                        int cmd_fds[2 * commands.count];
+                        for (int i = 0; i < commands.count; i++)
                         {
-                                /* Child */
-
-                                // redirect if output file is specified
-                                if (commands.output_file != NULL)
-                                {
-                                        int fd;
-                                        if (commands.append)
-                                        {
-                                                fd = open(commands.output_file, O_WRONLY | O_CREAT | O_APPEND, 0644);
-                                        }
-                                        else
-                                        {
-                                                fd = open(commands.output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-                                        }
-                                        if (fd < 0)
-                                        {
-                                                fprintf(stderr, "Error: cannot open output file\n");
-                                                continue;
-                                        }
-                                        dup2(fd, STDOUT_FILENO);
-                                        close(fd);
-                                }
-
-                                int i;
-                                for (i = 0; commands.programs[0][i] != NULL && i < ARG_MAX; i++)
-                                {
-                                        commands.args[i] = commands.programs[0][i];
-                                }
-                                commands.args[i] = NULL;
-
-                                execvp(commands.program, commands.args);
-                                fprintf(stderr, "Error: command not found\n");
-                                exit(EXIT_FAILURE);
+                                pipe(cmd_fds + i * 2);
                         }
-                        else if (pid > 0)
+
+                        for (int cmd_number = 0; cmd_number < commands.count; cmd_number++)
                         {
-                                /* Parent */
-                                int child_status;
-                                wait(&child_status);
-                                if (WIFEXITED(child_status))
+                                pid_t pid;
+                                pid = fork();
+                                if (pid == 0)
                                 {
-                                        status = WEXITSTATUS(child_status);
+                                        /* Child */
+
+                                        // redirect if output file is specified
+                                        if (commands.output_file != NULL)
+                                        {
+                                                int fd;
+                                                if (commands.append)
+                                                {
+                                                        fd = open(commands.output_file, O_WRONLY | O_CREAT | O_APPEND, 0644);
+                                                }
+                                                else
+                                                {
+                                                        fd = open(commands.output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                                                }
+                                                if (fd < 0)
+                                                {
+                                                        fprintf(stderr, "Error: cannot open output file\n");
+                                                        continue;
+                                                }
+                                                dup2(fd, STDOUT_FILENO);
+                                                close(fd);
+                                        }
+                                        
+                                        // prefer pipe picture in lecture
+                                        /* if its not first command meaning they will be second and third, 
+                                        so plug them all to stdin (number 0, blue wire) */
+                                        if (cmd_number != 0)
+                                        {
+                                                dup2(cmd_fds[(cmd_number - 1) * 2], STDIN_FILENO);
+                                        }
+
+                                        /* if its not last command meaning they will be first and second, 
+                                        so plug them all to stdout (number 1, pink wire) */
+                                        if (cmd_number != commands.count - 1)
+                                        {
+                                                dup2(cmd_fds[cmd_number * 2 + 1], STDOUT_FILENO);
+                                        }
+
+                                        // close all fds
+                                        for (int i = 0; i < 2 * (commands.count - 1); i++)
+                                        {
+                                                close(cmd_fds[i]);
+                                        }
+
+                                        execvp(commands.programs[cmd_number][0], commands.programs[cmd_number]);
+                                        fprintf(stderr, "Error: command not found\n");
+                                        exit(EXIT_FAILURE);
                                 }
-                                // dup2(test, STDOUT_FILENO);
+                                else if (pid < 0)
+                                {
+                                        perror("fork");
+                                        exit(EXIT_FAILURE);
+                                }
                         }
-                        else
+
+                        /* Parent */
+                        // closes all pipe fds
+                        for (int i = 0; i < 2 * (commands.count - 1); i++)
                         {
-                                perror("fork");
-                                exit(EXIT_FAILURE);
+                                close(cmd_fds[i]);
+                        }
+
+                        // wait for child
+                        for (int i = 0; i < commands.count; i++)
+                        {
+                                wait(NULL);
                         }
                 }
 
                 // print + completed 'command' [status]
-                fprintf(stderr, "+ completed '%s' [%d]\n", commands.full_command, status);
+                fprintf(stderr, "+ completed '%s' [%d]\n", commands.full_command, WEXITSTATUS(status));
 
                 if (exit_status == 1)
                 {
