@@ -9,6 +9,7 @@
 
 #define CMDLINE_MAX 512
 #define ARG_MAX 16
+#define PIPE_MAX 3
 // #define TOKEN_MAX 32
 
 struct command
@@ -19,11 +20,18 @@ struct command
         char *full_command;
         char *output_file;
         int append;
+
+        char *programs[PIPE_MAX][ARG_MAX];
 };
 
 int parse(struct command *commands, char *cmd_in)
 {
         commands->full_command = strdup(cmd_in);
+        if (commands->full_command == NULL)
+        {
+                return -1;
+        }
+
         commands->count = 0;
         commands->output_file = NULL;
         commands->append = 0;
@@ -56,6 +64,46 @@ int parse(struct command *commands, char *cmd_in)
                 }
         }
 
+        char *pipe_command = strtok(cmd_in, "|");
+        int cmd_amt = 0;
+        while (pipe_command != NULL && cmd_amt < PIPE_MAX)
+        {
+                char *command_args = strdup(pipe_command);
+                if (command_args == NULL)
+                {
+                        return -1;
+                }
+
+                pipe_command = strtok(NULL, "|");
+
+                char *token = strtok(command_args, " ");
+                int cmd_arg_count = 0;
+
+                //  printf("after copying and changing: %s\n", test);
+
+                while (token != NULL && cmd_arg_count < ARG_MAX - 1)
+                {
+                        commands->programs[cmd_amt][cmd_arg_count] = strdup(token);
+                        // printf("checking test2 tokens: %s\n", test2);
+                        if (cmd_arg_count == 0)
+                        {
+                                commands->program = commands->programs[cmd_amt][0];
+                        }
+
+                        // printf("checking array tokens: %s\n", commands->programs[cmd_amt][cmd_arg_count]);
+                        // printf("dimensions: row %d column %d\n", cmd_amt, cmd_arg_count);
+                        token = strtok(NULL, " ");
+                        cmd_arg_count++;
+                }
+                commands->programs[cmd_amt][cmd_arg_count] = NULL;
+                // printf("checking NULL in array: %s\n", commands->programs[cmd_amt][cmd_arg_count]);
+                // printf("dimensions: row %d column %d\n", cmd_amt, cmd_arg_count);
+                cmd_amt++;
+        }
+        commands->count = cmd_amt;
+
+        // printf("cmd_in after |: %s\n", cmd_in);
+        /*
         char *token = strtok(cmd_in, " ");
         while (token != NULL)
         {
@@ -69,9 +117,10 @@ int parse(struct command *commands, char *cmd_in)
                         commands->program = token;
                 }
                 commands->args[commands->count++] = token;
+                // printf("parse token: %s\n", token);
                 token = strtok(NULL, " ");
         }
-        commands->args[commands->count] = NULL;
+        commands->args[commands->count] = NULL;*/
         return 0;
 }
 
@@ -137,9 +186,9 @@ int main(void)
                 // cd command
                 else if (!strcmp(commands.program, "cd"))
                 {
-                        if (commands.count > 1)
+                        if (commands.programs[0][1] != NULL)
                         {
-                                if (chdir(commands.args[1]) != 0)
+                                if (chdir(commands.programs[0][1]) != 0)
                                 {
                                         fprintf(stderr, "Error: cannot cd into directory\n");
                                         status = 1;
@@ -205,6 +254,13 @@ int main(void)
                                         dup2(fd, STDOUT_FILENO);
                                         close(fd);
                                 }
+
+                                int i;
+                                for (i = 0; commands.programs[0][i] != NULL && i < ARG_MAX; i++)
+                                {
+                                        commands.args[i] = commands.programs[0][i];
+                                }
+                                commands.args[i] = NULL;
 
                                 execvp(commands.program, commands.args);
                                 fprintf(stderr, "Error: command not found\n");
