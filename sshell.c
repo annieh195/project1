@@ -10,7 +10,6 @@
 #define CMDLINE_MAX 512
 #define ARG_MAX 16
 #define PIPE_MAX 3
-// #define TOKEN_MAX 32
 
 struct command
 {
@@ -68,18 +67,17 @@ int parse(struct command *commands, char *cmd_in)
         int cmd_amt = 0;
         while (pipe_command != NULL && cmd_amt < PIPE_MAX)
         {
-                char *command_args = strdup(pipe_command);
-                if (command_args == NULL)
-                {
-                        return -1;
-                }
-
+                commands->programs[cmd_amt][0] = pipe_command;
                 pipe_command = strtok(NULL, "|");
+                cmd_amt++;
+        }
+        commands->count = cmd_amt;
 
-                char *token = strtok(command_args, " ");
+        for (cmd_amt = 0; cmd_amt < commands->count; cmd_amt++)
+        {
+                char *cmd_to_parse = strdup(commands->programs[cmd_amt][0]);
+                char *token = strtok(cmd_to_parse, " ");
                 int cmd_arg_count = 0;
-
-                //  printf("after copying and changing: %s\n", test);
 
                 while (token != NULL)
                 {
@@ -89,43 +87,17 @@ int parse(struct command *commands, char *cmd_in)
                                 return -1;
                         }
                         commands->programs[cmd_amt][cmd_arg_count] = strdup(token);
-                        // printf("checking test2 tokens: %s\n", test2);
+                        
                         if (cmd_arg_count == 0)
                         {
                                 commands->program = commands->programs[cmd_amt][0];
                         }
 
-                        // printf("checking array tokens: %s\n", commands->programs[cmd_amt][cmd_arg_count]);
-                        // printf("dimensions: row %d column %d\n", cmd_amt, cmd_arg_count);
                         token = strtok(NULL, " ");
                         cmd_arg_count++;
                 }
                 commands->programs[cmd_amt][cmd_arg_count] = NULL;
-                // printf("checking NULL in array: %s\n", commands->programs[cmd_amt][cmd_arg_count]);
-                // printf("dimensions: row %d column %d\n", cmd_amt, cmd_arg_count);
-                cmd_amt++;
         }
-        commands->count = cmd_amt;
-
-        // printf("cmd_in after |: %s\n", cmd_in);
-        /*
-        char *token = strtok(cmd_in, " ");
-        while (token != NULL)
-        {
-                if (commands->count >= ARG_MAX)
-                {
-                        fprintf(stderr, "Error: too many process arguments\n");
-                        return -1;
-                }
-                if (commands->count == 0)
-                {
-                        commands->program = token;
-                }
-                commands->args[commands->count++] = token;
-                // printf("parse token: %s\n", token);
-                token = strtok(NULL, " ");
-        }
-        commands->args[commands->count] = NULL;*/
         return 0;
 }
 
@@ -164,6 +136,7 @@ int builtin_cd(struct command *commands)
 
 int builtin_sls()
 {
+        // Cite: Lecture 03.syscalls.pdf page 32-33
         int status = 0;
         struct stat sb;
         DIR *dirp;
@@ -280,16 +253,9 @@ void pipe_function(struct command *commands)
         }
 
         // wait for child
-        // int child_status;
         for (int i = 0; i < commands->count; i++)
         {
                 wait(&statuses[i]);
-                // wait(&child_status);
-                // if (WIFEXITED(child_status))
-                // {
-                //         int status = WEXITSTATUS(child_status);
-                //         print_complete(commands, status);
-                // }
         }
         fprintf(stderr, "+ completed '%s' [", commands->full_command);
         for (int i = 0; i < commands->count; i++)
@@ -308,7 +274,6 @@ int main(void)
         while (1)
         {
                 char *nl;
-                // int retval; previous was var of system(), no use
 
                 /* Print prompt */
                 printf("sshell$ ");
@@ -335,7 +300,6 @@ int main(void)
                         continue; // outloop if error
                 }
                 int status = 0;
-                // int exit_status = 0;
 
                 /* Builtin command */
                 // exit command
@@ -361,7 +325,6 @@ int main(void)
                 }
 
                 // sls command
-                // Cite: Lecture 03.syscalls.pdf page 32-33
                 else if (!strcmp(commands.program, "sls"))
                 {
                         status = builtin_sls();
@@ -372,14 +335,6 @@ int main(void)
                 {
                         pipe_function(&commands);
                 }
-
-                // print + completed 'command' [status]
-                // fprintf(stderr, "+ completed '%s' [%d]\n", commands.full_command, WEXITSTATUS(status));
-
-                // if (exit_status == 1)
-                // {
-                //         break;
-                // }
         }
 
         return EXIT_SUCCESS;
