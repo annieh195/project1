@@ -25,6 +25,13 @@ struct command
 
 int parse(struct command *commands, char *cmd_in)
 {
+        // check for missing command
+        if (cmd_in == NULL || strlen(cmd_in) == 0)
+        {
+                fprintf(stderr, "Error: missing command\n");
+                return -1;
+        }
+
         commands->full_command = strdup(cmd_in);
         if (commands->full_command == NULL)
         {
@@ -54,6 +61,14 @@ int parse(struct command *commands, char *cmd_in)
                 }
         }
 
+        // check for no output file after output_redirection
+        if ((output_redirection && strlen(commands->output_file) == 0) ||
+            (output_redirection && commands->output_file[0] == '>'))
+        {
+                fprintf(stderr, "Error: no output file\n");
+                return -1;
+        }
+
         // check white spaces, increase pointer to first char of next token
         if (commands->output_file != NULL)
         {
@@ -61,6 +76,21 @@ int parse(struct command *commands, char *cmd_in)
                 {
                         commands->output_file++;
                 }
+        }
+
+        // check for missing command in pipes
+        char *check_cmd_pipe = cmd_in;
+        while (*check_cmd_pipe)
+        {
+                if (*check_cmd_pipe == '|')
+                {
+                        if (check_cmd_pipe == cmd_in || *(check_cmd_pipe + 1) == '\0' || *(check_cmd_pipe + 1) == '|')
+                        {
+                                fprintf(stderr, "Error: missing command\n");
+                                return -1;
+                        }
+                }
+                check_cmd_pipe++;
         }
 
         char *pipe_command = strtok(cmd_in, "|");
@@ -87,7 +117,7 @@ int parse(struct command *commands, char *cmd_in)
                                 return -1;
                         }
                         commands->programs[cmd_amt][cmd_arg_count] = strdup(token);
-                        
+
                         if (cmd_arg_count == 0)
                         {
                                 commands->program = commands->programs[cmd_amt][0];
@@ -299,6 +329,7 @@ int main(void)
                 {
                         continue; // outloop if error
                 }
+
                 int status = 0;
 
                 /* Builtin command */
