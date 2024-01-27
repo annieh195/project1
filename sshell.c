@@ -1,11 +1,11 @@
+#include <dirent.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <fcntl.h>
 #include <sys/stat.h>
-#include <dirent.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #define CMDLINE_MAX 512
 #define ARG_MAX 16
@@ -25,13 +25,6 @@ struct command
 
 int parse(struct command *commands, char *cmd_in)
 {
-        // check for missing command
-        if (cmd_in == NULL || strlen(cmd_in) == 0)
-        {
-                fprintf(stderr, "Error: missing command\n");
-                return -1;
-        }
-
         commands->full_command = strdup(cmd_in);
         if (commands->full_command == NULL)
         {
@@ -69,13 +62,11 @@ int parse(struct command *commands, char *cmd_in)
                 return -1;
         }
 
-        // check white spaces, increase pointer to first char of next token
-        if (commands->output_file != NULL)
+        // check for missing command
+        if (cmd_in == NULL || strlen(cmd_in) == 0)
         {
-                while (*commands->output_file == ' ')
-                {
-                        commands->output_file++;
-                }
+                fprintf(stderr, "Error: missing command\n");
+                return -1;
         }
 
         // check for missing command in pipes
@@ -91,6 +82,15 @@ int parse(struct command *commands, char *cmd_in)
                         }
                 }
                 check_cmd_pipe++;
+        }
+
+        // check white spaces, increase pointer to first char of next token
+        if (commands->output_file != NULL)
+        {
+                while (*commands->output_file == ' ')
+                {
+                        commands->output_file++;
+                }
         }
 
         char *pipe_command = strtok(cmd_in, "|");
@@ -270,7 +270,7 @@ void pipe_function(struct command *commands)
                         exit(EXIT_FAILURE);
                 }
         }
-        
+
         /* Parent */
         // closes all pipe fds
         for (int i = 0; i < 2 * commands->count; i++)
@@ -302,7 +302,7 @@ int main(void)
                 char *nl;
 
                 /* Print prompt */
-                printf("sshell$ ");
+                printf("sshell@ucd$ ");
                 fflush(stdout);
 
                 /* Get command line */

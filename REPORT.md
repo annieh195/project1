@@ -43,7 +43,7 @@ output is rerouted, the child will run the command with `execvp`.
 
 ### Implementing pipeline commands
 The command parser tokenizes the inputted command based on the metacharacter 
-`|`. If it's valid, it will keep track of the number of pipes needed. Each 
+`|`. If it's valid, it will keep track of the number of commands inputted. Each 
 individual command will also then be tokenized into its arguments and stored
 into a two-dimensional array. The array dedicates each command to a single row, 
 which will be passed into `execvp` instead of the whole array. After parsing, an
@@ -80,7 +80,7 @@ with the `S_ISREG`. We used 2 examples code from Lecture 03.syscalls.pdf page
 using stat macro `S_ISREG` to check if each is a regular file. It then prints
 the name and size of each regular file found. 
 
-## Workcited
+## Work cited
 Lectures and C file examples from Professor Porquet
 
 ## License
