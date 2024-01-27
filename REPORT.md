@@ -1,7 +1,8 @@
 # SSHELL: Simple Shell
 ## Summary
 This program, `sshell`, can run UNIX commands as well as builtin functions `pwd`
-, `cd`, `exit`, and `sls`. It also has output redirection for append and truncate commands along with piping capabilities. 
+, `cd`, `exit`, and `sls`. It also has output redirection for append and 
+truncate commands along with piping capabilities. 
 
 ## Implementation
 The implementation of this program follows six consecutive phases:
@@ -67,7 +68,11 @@ call a different `open` with the `O_APPEND` parameter. `dup2` will redirect the
 output to the file descriptor using that `open`. The child will `close` the file
 descriptor and run the command with `execvp`. 
 #### Implement builtin function sls
-Command is compared with keyword `sls`. If the commands match, then the functions from C's standard library such as `opendir`, `readdir`, and `stat` with the `S_ISREG` are used to open the current directory, iterate over its entries, and check if each is a regular file. It then prints the name and size of each regular file found.
+Command is compared with keyword `sls`. If the commands match, then the 
+functions from C's standard library such as `opendir`, `readdir`, and `stat` 
+with the `S_ISREG` are used to open the current directory, iterate over its 
+entries, and check if each is a regular file. It then prints the name and size 
+of each regular file found.
 
 ## License
 This work is distributed under the [GNU All-Permissive
