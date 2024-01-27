@@ -223,16 +223,11 @@ int output_redirection(struct command *commands, int cmd_number)
 
 void plug_piping(int *cmd_fds, int cmd_number, int commands_count)
 {
-        // prefer pipe picture in lecture
-        /* if its not first command meaning they will be second and third,
-        so plug them all to stdin (number 0, blue wire) */
         if (cmd_number != 0)
         {
                 dup2(cmd_fds[(cmd_number - 1) * 2], STDIN_FILENO);
         }
 
-        /* if its not last command meaning they will be first and second,
-        so plug them all to stdout (number 1, pink wire) */
         if (cmd_number != commands_count - 1)
         {
                 dup2(cmd_fds[cmd_number * 2 + 1], STDOUT_FILENO);
@@ -275,6 +270,7 @@ void pipe_function(struct command *commands)
                         exit(EXIT_FAILURE);
                 }
         }
+        
         /* Parent */
         // closes all pipe fds
         for (int i = 0; i < 2 * commands->count; i++)

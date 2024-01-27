@@ -14,7 +14,7 @@ The implementation of this program follows six consecutive phases:
     2. Manipulating the stdout file descriptor prior to running the specified
     program.
 5. Implementing pipeline commands
-6. Extra features (append and sls)
+6. Implementing extra features (append and sls)
 
 ### Running simple commands
 Commands are parsed into an array and `fork` is called. The child will be the 
@@ -58,6 +58,10 @@ about to run the first command. The child will then `close` all of the pipes and
 2@run the command with `execvp`. The parent will also `close` all of the pipes
 then `wait`s for the child to exit.
 
+To connect all the pipes together in `plug_piping` function, we used logic in 
+the Pipe picture provided in Lecture 03.syscalls.pdf page 35. If it is not first 
+command, we plug into STDIN. If it is not last command, we plug into STDOUT.
+
 ### Extra features
 #### Append
 The command parser uses the same technique in output redirection to search for 
@@ -70,9 +74,14 @@ descriptor and run the command with `execvp`.
 #### Implement builtin function sls
 Command is compared with keyword `sls`. If the commands match, then the 
 functions from C's standard library such as `opendir`, `readdir`, and `stat` 
-with the `S_ISREG` are used to open the current directory, iterate over its 
-entries, and check if each is a regular file. It then prints the name and size 
-of each regular file found.
+with the `S_ISREG`. We used 2 examples code from Lecture 03.syscalls.pdf page 
+32-33 (Directory traversal & File characteristics.) We used `opendir`/`closedir`
+/`readdir` to open the current directory, iterate over its entries, and then 
+using stat macro `S_ISREG` to check if each is a regular file. It then prints
+the name and size of each regular file found. 
+
+## Workcited
+Lectures and C file examples from Professor Porquet
 
 ## License
 This work is distributed under the [GNU All-Permissive
